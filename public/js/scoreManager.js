@@ -26,7 +26,7 @@ async function setMultiplier(ethAddress, level) {
     processData: false,
   };
   $.ajax(settings).done(function (response) {
-    alert('NFT Burned and Multipler Added!');
+    alert('NFT Burned and Multiplier Added!');
   });
 }
 
