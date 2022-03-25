@@ -12,6 +12,7 @@ async function getMultiplier(ethAddress) {
       multiplier = 1;
     } else if (response?.data?.rows) {
       multiplier = response.data.rows[0][1];
+      $('#multiplierString').text(`Multiplier Activated: X${multiplier}`);
     }
     return multiplier;
   });
@@ -41,6 +42,7 @@ async function delMultiplier(ethAddress) {
   $.ajax(settings).done(function (response) {
     if (response) {
       multiplier = 1;
+      $('#multiplierString').text(`Multiplier Disabled`);
     }
   });
 }
