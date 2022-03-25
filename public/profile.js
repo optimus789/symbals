@@ -5,7 +5,7 @@ $(document).ready(function () {
 let connection = Moralis.onConnect(function (accounts) {
   setMoralisData();
 });
-
+const web3 = new Moralis.Web3();
 function setMoralisData() {
   let user = Moralis.User.current();
   if (user) {
@@ -15,18 +15,6 @@ function setMoralisData() {
       `https://opensea.io/${user.get('ethAddress')}?tab=private`
     );
     console.log(`${user.get('ethAddress')}`);
-    const settings = {
-      async: true,
-      crossDomain: true,
-      url: `https://api.nftport.xyz/v0/accounts/${user.get(
-        'ethAddress'
-      )}?chain=polygon`,
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'c00bc5e8-e27e-4e8b-8d4d-15e74a7a84d9',
-      },
-    };
     const cardDiv = `<div class="card bg-light nft-card col-3 m-2" nft-level="{nft-level}" onclick="setTokenId(this.id)" id="{token_id}">
     <img class="card-img-top" src="{nft-image}" alt="2048 NFT Game">
     <div class="card-body">
@@ -43,56 +31,69 @@ function setMoralisData() {
         <span class="col-4">{nft-level}</span>
     </div>
 </div>`;
-    $.ajax(settings).done(function (response) {
-      console.log(response);
-      if (response && response.nfts) {
-        response.nfts.forEach(async (nft) => {
-          if (
-            nft.contract_address ===
-            '0xb2c8c173e6a44dce16cfe0619ba6edf66a07d8bb'
-          ) {
-            console.log(nft.contract_address);
 
-            const settings = {
-              async: true,
-              crossDomain: true,
-              url: `https://api.covalenthq.com/v1/137/tokens/0xb2c8c173e6a44dce16cfe0619ba6edf66a07d8bb/nft_metadata/${nft.token_id}/?quote-currency=USD&format=JSON&key=ckey_66c30cdb41ca4d87a451559d868`,
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: 'c00bc5e8-e27e-4e8b-8d4d-15e74a7a84d9',
-              },
-            };
-            $.ajax(settings).done(function (metadata) {
-              console.log("Metadata console: ", metadata);
-              let nftData = metadata.data.items[0].nft_data[0];
-              let nftCard = cardDiv
-                .replace(/{token_id}/g, nftData.token_id)
-                .replace(
-                  /{nft-score}/g,
-                  nftData?.external_data?.attributes[2]?.value
-                )
-                .replace(
-                  /{nft-level}/g,
-                  nftData.external_data.attributes[1].value
-                )
-                .replace(/{nft-title}/g, nftData.external_data.name)
-                .replace(
-                  /{nft-description}/g,
-                  nftData.external_data.description
-                )
-                .replace(/{nft-image}/, nftData.external_data.image);
-              $(nftCard).appendTo('#outer-div');
-            });
-          }
-        });
-      }
-      if (response.transaction_external_url) {
-        $('#container-card').css('display', 'block');
-        $('#transaction-url').css('display', 'block');
-        $('#transaction-url').attr('href', response.transaction_external_url);
-      }
-    });
+const options = {
+  method: 'GET',
+  redirect: 'follow'
+};
+    const baseURL =
+      'https://polygon-mainnet.g.alchemy.com/v2/DFxYBtrdL4CFhx6bsc4XiF-pDpnAjRCe/getNFTs/';
+    const ownerAddr = `${user.get('ethAddress')}`;
+    const contractAddr = '0xb2c8c173e6a44dce16cfe0619ba6edf66a07d8bb';
+    const fetchURL = `${baseURL}?owner=${ownerAddr}&contractAddresses[]=${contractAddr}`;
+
+    fetch(fetchURL, options)
+      .then((response) => {
+        console.log(response);
+        return response.json();
+      })
+      .then((response) => {
+        if (response && response.ownedNfts) {
+          console.log("true");
+          response.ownedNfts.forEach(async (nft) => {
+            let tokenId = nft.id.tokenId.toString();
+            tokenId = bigInt(tokenId.slice(48),16)
+            console.log("Bigint num:",tokenId)
+              const settings = {
+                async: true,
+                crossDomain: true,
+                url: `https://api.covalenthq.com/v1/137/tokens/0xb2c8c173e6a44dce16cfe0619ba6edf66a07d8bb/nft_metadata/${tokenId}/?quote-currency=USD&format=JSON&key=ckey_66c30cdb41ca4d87a451559d868`,
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: 'c00bc5e8-e27e-4e8b-8d4d-15e74a7a84d9',
+                },
+              };
+              $.ajax(settings).done(function (metadata) {
+                console.log('Metadata console: ', metadata);
+                let nftData = metadata.data.items[0].nft_data[0];
+                let nftCard = cardDiv
+                  .replace(/{token_id}/g, nftData.token_id)
+                  .replace(
+                    /{nft-score}/g,
+                    nftData?.external_data?.attributes[2]?.value
+                  )
+                  .replace(
+                    /{nft-level}/g,
+                    nftData.external_data.attributes[1].value
+                  )
+                  .replace(/{nft-title}/g, nftData.external_data.name)
+                  .replace(
+                    /{nft-description}/g,
+                    nftData.external_data.description
+                  )
+                  .replace(/{nft-image}/, nftData.external_data.image);
+                $(nftCard).appendTo('#outer-div');
+              });
+          });
+        }
+        if (response.transaction_external_url) {
+          $('#container-card').css('display', 'block');
+          $('#transaction-url').css('display', 'block');
+          $('#transaction-url').attr('href', response.transaction_external_url);
+        }
+      })
+      .catch((error) => console.log('error', error));
   }
 }
 
@@ -528,7 +529,6 @@ const contractAbi = [
     type: 'function',
   },
 ];
-const web3 = new Moralis.Web3();
 
 const contract_address = '0xb2C8c173E6A44DcE16cFE0619bA6EDf66a07d8bB';
 // async function startDuel(user) {
@@ -562,8 +562,8 @@ async function consumeNft() {
   try {
     let user = Moralis.User.current();
     let tokenId = $('#tokenId').val();
-    let nftLevel = $(`#${tokenId}`).attr("nft-level");
-    console.log(`#${tokenId}`)
+    let nftLevel = $(`#${tokenId}`).attr('nft-level');
+    console.log(`#${tokenId}`);
     const options721 = {
       contractAddress: contract_address,
       functionName: 'transferFrom',
@@ -580,10 +580,10 @@ async function consumeNft() {
     } catch (error) {
       console.log(error, '\n Burn issue', user, tokenId);
     }
-    if(result721){
-      console.log("nftLevel",nftLevel)
-      await setMultiplier(user.get('ethAddress'),nftLevel)
-     }
+    if (result721) {
+      console.log('nftLevel', nftLevel);
+      await setMultiplier(user.get('ethAddress'), nftLevel);
+    }
   } catch (error) {
     console.log(error);
     alert('please enter a valid token ID');
